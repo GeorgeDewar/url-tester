@@ -1,15 +1,5 @@
 <?php
 
-$results = null;
-
-if($_SERVER['REQUEST_METHOD'] == 'POST'){
-
-	foreach(preg_split("/((\r?\n)|(\r\n?))/", $_POST['urls']) as $url){
-		testUrl($url);
-	} 
-	
-}
-
 function testUrl($url){
 	if(trim($url) == '') return;
 
