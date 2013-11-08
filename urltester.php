@@ -1,36 +1,67 @@
 <?php
 
-function testUrl($url){
-	if(trim($url) == '') return;
+// The set of URLs and the results of testing them
+$results = array();
 
+// If the user has clicked Go, test the URLs
+if($_SERVER['REQUEST_METHOD'] == 'POST'){
+
+	foreach(preg_split("/((\r?\n)|(\r\n?))/", $_POST['urls']) as $url){
+		// Ignore URL if empty
+		if(trim($url) == '') continue;
+
+		array_push($results, testUrl($url));
+	} 
+	
+}
+
+class TestResult{
+	public $url;				// The URL that was tested
+	public $results = array();	// The results of testing this URL
+	public $warnings = array();	// Warnings which may not indicate that the URL is not working
+}
+
+function testUrl($url){
+	$result = new TestResult();
+	$result->url = $url;
+	
+	if(trim($url) != $url)
+		array_push($result->warnings, 'URL has leading or trailing whitespace');
+	
+	// Trim any whitespace from the URL
+	$url = trim($url);
+	
+	// Fetch the page, and get the headers
 	$headers = getHeaders($url);
-	if($headers == null) return;
+	if($headers == -1){
+		array_push($result->results, 'Error (could not connect)');
+		return $result;
+	}
 	
 	$i = 0;
-	echo $url;
-	
 	foreach($headers as $header){
 		// If this header is actually the HTTP response header
 		if(strpos(strtolower($header), 'http/') === 0){
-			echo ', ';
 			
 			$code = substr($header,9);
 			if(startsWith($code, '3')){
 				// This is a redirect, so find the Location header
 				$location = findLocation($headers, $i);
-				echo 'Redirect (' . $code . ') to \'' . $location . '\'';
+				array_push($result->results, 'Redirect (' . $code . ') to \'' . $location . '\'');
 			}
 			elseif(startsWith($code, '2')){
 				// All good
-				echo 'OK (' . $code . ')';
+				array_push($result->results, 'OK (' . $code . ')');
 			}
 			else{
 				// Uh oh
-				echo 'Error (' . $code . ')';
+				array_push($result->results, 'Error (' . $code . ')');
 			}
 		}
 		$i++;
 	}
+	
+	return $result;
 }
 
 function getHeaders($url){
@@ -45,7 +76,7 @@ function getHeaders($url){
 	@file_get_contents($url, false, $context);
 	
 	if(isset($http_response_header)) return $http_response_header;
-	else echo $url . ', Error (could not connect)';
+	else return -1;
 }
 
 function startsWith($string, $test){
@@ -78,18 +109,21 @@ function findLocation($headers, $start){
 	<input type="submit" value="Go" />
 </form>
 
-<?php
-if($_SERVER['REQUEST_METHOD'] == 'POST'){
-	echo '<h1>Results</h1> <p>';
-
-	foreach(preg_split("/((\r?\n)|(\r\n?))/", $_POST['urls']) as $url){
-		testUrl($url);
-		echo '<br />';
-	} 
-	
-	echo '</p>';
-}
-?>
+<?php if($_SERVER['REQUEST_METHOD'] == 'POST'){ ?>
+	<h1>Results</h1>
+	<table style="border: 1px;">
+	<tr>
+		<td>URL</td><td>Results</td><td>Warnings</td>
+	</tr>
+	<?php foreach($results as $result){ ?>
+		<tr>
+			<td><?php echo $result->url; ?></td>
+			<td><?php echo implode($result->results, ', '); ?></td>
+			<td><?php echo implode($result->warnings, ', '); ?></td>
+		</tr>
+	<?php } ?>
+	</table>
+<?php } ?>
 
 </body>
 </html>
