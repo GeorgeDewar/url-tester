@@ -1,11 +1,12 @@
 <?php
 
+session_start();
+
 // The set of URLs and the results of testing them
 $results = array();
 
 // If the user has clicked Go, test the URLs
-if($_SERVER['REQUEST_METHOD'] == 'POST'){
-
+if(isset($_POST['display'])){
 	foreach(preg_split("/((\r?\n)|(\r\n?))/", $_POST['urls']) as $url){
 		// Ignore URL if empty
 		if(trim($url) == '') continue;
@@ -13,12 +14,34 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 		array_push($results, testUrl($url));
 	} 
 	
+	$_SESSION['last_results'] = $results;
+}
+elseif(isset($_GET['download'])){
+	$results = $_SESSION['last_results'];
+	
+	header('Content-Type: application/csv');
+	header('Content-Disposition: attachment; filename=urltester.csv');
+	header('Pragma: no-cache');
+
+	echo "URL,Final Status,Warnings,Details\n";
+	foreach($results as $result){
+		echo csvEscape($result->url);
+		echo ',' . csvEscape($result->results[count($result->results) - 1]);
+		echo ',' . csvEscape(implode($result->warnings, ', '));
+		echo ',' . csvEscape(implode($result->results, ', '));
+	}
+	
+	die();
 }
 
 class TestResult{
 	public $url;				// The URL that was tested
 	public $results = array();	// The results of testing this URL
 	public $warnings = array();	// Warnings which may not indicate that the URL is not working
+}
+
+function csvEscape($text){
+	return '"' . str_replace('"','""',$text) . '"';
 }
 
 function testUrl($url){
@@ -65,17 +88,16 @@ function testUrl($url){
 }
 
 function getHeaders($url){
-	$opts = array(
-	  'http'=>array(
+	stream_context_set_default(
+	  array('http'=>array(
 		'method'=>"GET",
 		'header'=>"User-Agent: URL Tester\r\n"
-	  )
+	  ))
 	);
 
-	$context = stream_context_create($opts);
-	@file_get_contents($url, false, $context);
+	$headers = @get_headers($url);
 	
-	if(isset($http_response_header)) return $http_response_header;
+	if($headers != null) return $headers;
 	else return -1;
 }
 
@@ -106,11 +128,12 @@ function findLocation($headers, $start){
 	<p>Enter a list of URLs into the box below, then click Go.</p>
 	<textarea name="urls" rows="10" cols="100" placeholder="Your URL list here"><?php if (isset($_POST['urls'])) echo $_POST['urls']; ?></textarea>
 	<br />
-	<input type="submit" value="Go" />
+	<input type="submit" name="display" value="Go" /> <button onclick="window.location.href='urltester.php';">Reset</button>
 </form>
 
 <?php if($_SERVER['REQUEST_METHOD'] == 'POST'){ ?>
 	<h1>Results</h1>
+	<a href="?download">Download as CSV</a>
 	<table style="border: 1px;">
 	<tr>
 		<td>URL</td><td>Results</td><td>Warnings</td>
