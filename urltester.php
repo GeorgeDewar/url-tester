@@ -126,9 +126,9 @@ function findLocation($headers, $start){
 
 <form action="" method="post">
 	<p>Enter a list of URLs into the box below, then click Go.</p>
-	<textarea name="urls" rows="10" cols="100" placeholder="Your URL list here"><?php if (isset($_POST['urls'])) echo $_POST['urls']; ?></textarea>
+	<textarea name="urls" rows="10" cols="100" placeholder="Your URL list here"><?php if (isset($_POST['urls'])) echo htmlspecialchars($_POST['urls']); ?></textarea>
 	<br />
-	<input type="submit" name="display" value="Go" /> <button onclick="window.location.href='urltester.php';">Reset</button>
+	<input type="submit" name="display" value="Go" /> <a href="urltester.php">Reset</a>
 </form>
 
 <?php if($_SERVER['REQUEST_METHOD'] == 'POST'){ ?>
@@ -140,9 +140,9 @@ function findLocation($headers, $start){
 	</tr>
 	<?php foreach($results as $result){ ?>
 		<tr>
-			<td><?php echo $result->url; ?></td>
-			<td><?php echo implode($result->results, ', '); ?></td>
-			<td><?php echo implode($result->warnings, ', '); ?></td>
+			<td><?php echo htmlspecialchars($result->url); ?></td>
+			<td><?php echo htmlspecialchars(implode($result->results, ', ')); ?></td>
+			<td><?php echo htmlspecialchars(implode($result->warnings, ', ')); ?></td>
 		</tr>
 	<?php } ?>
 	</table>
